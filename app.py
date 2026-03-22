@@ -37,14 +37,31 @@ try:
     import cv2
     import mediapipe as mp
 except ImportError as e:
-    st.error(f"""
-    ❌ **Import Error: {str(e)}**
+    error_msg = str(e)
     
-    Please install required packages:
-    ```bash
-    pip install -r requirements.txt
-    ```
-    """)
+    if "libGL" in error_msg or "cannot open shared object" in error_msg:
+        st.error(f"""
+        ❌ **Missing OpenGL Library**
+        
+        The deployed version has an OpenGL dependency issue. This app requires a local installation.
+        
+        **Quick Fix:**
+        ```bash
+        pip install -r requirements.txt
+        streamlit run app.py
+        ```
+        
+        **Error Details:** {error_msg}
+        """)
+    else:
+        st.error(f"""
+        ❌ **Import Error: {error_msg}**
+        
+        Please install required packages:
+        ```bash
+        pip install -r requirements.txt
+        ```
+        """)
     st.stop()
 
 # Title Section
