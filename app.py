@@ -9,63 +9,64 @@ import sys
 import warnings
 warnings.filterwarnings('ignore')
 
-# Check if running on Streamlit Cloud (no camera support)
-is_streamlit_cloud = os.environ.get('STREAMLIT_SERVER_HEADLESS', '').lower() == 'true'
-
 # Page configuration
 st.set_page_config(page_title="Sign Language Detector", layout="wide", initial_sidebar_state="collapsed")
 
-# Show deployment warning
-if is_streamlit_cloud:
-    st.error("""
-    ⚠️ **This app requires a local installation with camera access**
-    
-    Streamlit Cloud doesn't support webcam access (it's a headless server).
-    
-    **To use this app:**
-    1. Clone the repository to your computer
-    2. Install dependencies: `pip install -r requirements.txt`
-    3. Run locally: `streamlit run app.py`
-    4. Access at: http://localhost:8501
-    
-    This will give you full access to your camera for real-time sign language detection.
-    """)
-    st.stop()
+# Check if running on Streamlit Cloud or has camera access
+is_streamlit_cloud = os.environ.get('STREAMLIT_SERVER_HEADLESS', '').lower() == 'true'
 
-# Import CV2 for local deployment
+# Try to import OpenCV and MediaPipe (may fail on headless servers)
+cv2 = None
+mp = None
+import_error = None
+
 try:
     import cv2
     import mediapipe as mp
-except ImportError as e:
-    error_msg = str(e)
-    
-    if "libGL" in error_msg or "cannot open shared object" in error_msg:
-        st.error(f"""
-        ❌ **Missing OpenGL Library**
-        
-        The deployed version has an OpenGL dependency issue. This app requires a local installation.
-        
-        **Quick Fix:**
-        ```bash
-        pip install -r requirements.txt
-        streamlit run app.py
-        ```
-        
-        **Error Details:** {error_msg}
-        """)
-    else:
-        st.error(f"""
-        ❌ **Import Error: {error_msg}**
-        
-        Please install required packages:
-        ```bash
-        pip install -r requirements.txt
-        ```
-        """)
-    st.stop()
+except Exception as e:
+    import_error = str(e)
 
 # Title Section
 st.title("🤟 Real-Time Sign Language Detector")
+
+# Show appropriate message based on environment
+if is_streamlit_cloud or import_error:
+    st.error("""
+    ⚠️ **OpenGL/Camera Not Available in This Environment**
+    
+    This app requires real-time camera access, which isn't supported on Streamlit Cloud (headless server).
+    """)
+    
+    st.info("""
+    ### 🚀 **3 Ways to Use This App:**
+    
+    #### **1. Run Locally (Fastest Setup ⭐)**
+    ```bash
+    pip install -r requirements.txt
+    streamlit run app.py
+    ```
+    Then access: http://localhost:8501
+    
+    #### **2. Deploy with Camera Support (Railway/Render)**
+    - See [STREAMLIT_DEPLOYMENT.md](STREAMLIT_DEPLOYMENT.md) for detailed instructions
+    - Railway.app or Render.com support Docker with full system libraries
+    - Free tier available!
+    
+    #### **3. Cloud Demo Version (No Camera)**
+    - Create `app_cloud.py` with image upload instead
+    - Deploy to Streamlit Cloud
+    """)
+    
+    if import_error:
+        with st.expander("Technical Details"):
+            st.code(import_error, language="text")
+    
+    st.stop()
+
+# Only continue if imports were successful
+if cv2 is None or mp is None:
+    st.error("Required libraries could not be imported. Please run locally.")
+    st.stop()
 
 # Global keyboard event listener
 st.markdown("""

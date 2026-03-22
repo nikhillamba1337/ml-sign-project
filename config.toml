@@ -13,3 +13,8 @@ toolbarMode = "viewer"
 maxUploadSize = 200
 enableXsrfProtection = true
 port = 8501
+headless = true
+runOnSave = true
+
+[logger]
+level = "error"
