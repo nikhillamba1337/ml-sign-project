@@ -4,14 +4,16 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Install only minimal system dependencies needed for MediaPipe
-# opencv-python-headless doesn't need OpenGL libraries
+# Install system dependencies for OpenCV and MediaPipe
+# Need OpenGL libraries even with opencv-python-headless
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender1 \
     libgomp1 \
+    libpython3.11 \
+    libopengl0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
