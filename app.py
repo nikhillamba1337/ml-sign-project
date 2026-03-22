@@ -22,7 +22,11 @@ import_error = None
 
 try:
     import cv2
-    import mediapipe as mp
+    import mediapipe
+    # Verify mediapipe has solutions attribute
+    if not hasattr(mediapipe, 'solutions'):
+        raise ImportError("MediaPipe solutions not available - likely a version mismatch")
+    mp = mediapipe
 except Exception as e:
     import_error = str(e)
 
@@ -127,21 +131,33 @@ def load_model():
 # Initialize MediaPipe
 @st.cache_resource
 def initialize_mediapipe():
-    mp_hands = mp.solutions.hands
-    hands = mp_hands.Hands(
-        static_image_mode=False, 
-        max_num_hands=2,
-        min_detection_confidence=0.3,
-        min_tracking_confidence=0.3
-    )
-    return hands, mp_hands
+    try:
+        if mp is None or not hasattr(mp, 'solutions'):
+            raise RuntimeError("MediaPipe module not properly loaded")
+        
+        mp_hands = mp.solutions.hands
+        hands = mp_hands.Hands(
+            static_image_mode=False, 
+            max_num_hands=2,
+            min_detection_confidence=0.3,
+            min_tracking_confidence=0.3
+        )
+        return hands, mp_hands
+    except Exception as e:
+        st.error(f"Failed to initialize MediaPipe: {str(e)}")
+        raise
 
 model = load_model()
 if model is None:
     st.error("Failed to load model. Please check model.p file.")
     st.stop()
 
-hands, mp_hands = initialize_mediapipe()
+try:
+    hands, mp_hands = initialize_mediapipe()
+except Exception as e:
+    st.error(f"Failed to initialize MediaPipe. This may require a local installation.")
+    st.info(f"Error: {str(e)}")
+    st.stop()
 
 # Labels dictionary
 labels_dict = {i: chr(65 + i) for i in range(26)}
