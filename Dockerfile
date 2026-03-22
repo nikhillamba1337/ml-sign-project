@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxrender1 \
     libgomp1 \
     libopengl0 \
+    libglx0 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
