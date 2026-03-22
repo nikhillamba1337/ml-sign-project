@@ -12,8 +12,26 @@ warnings.filterwarnings('ignore')
 # Page configuration
 st.set_page_config(page_title="Sign Language Detector", layout="wide", initial_sidebar_state="collapsed")
 
-# Check if running on Streamlit Cloud or has camera access
-is_streamlit_cloud = os.environ.get('STREAMLIT_SERVER_HEADLESS', '').lower() == 'true'
+# Detect cloud/headless environment (only check for known cloud platforms)
+def is_cloud_environment():
+    """Check if running on known cloud platforms (allows local systems with cameras)"""
+    # Streamlit Cloud
+    if os.environ.get('STREAMLIT_SERVER_HEADLESS', '').lower() == 'true':
+        return True, "Streamlit Cloud"
+    
+    # Render
+    if os.environ.get('RENDER') == 'true':
+        return True, "Render"
+    
+    # Railway
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        return True, "Railway"
+    
+    # Note: We only check for known cloud platforms
+    # Local systems (even without X11 display) can still have camera access
+    return False, "Local"
+
+is_cloud, platform = is_cloud_environment()
 
 # Try to import OpenCV and MediaPipe (may fail on headless servers)
 cv2 = None
@@ -34,31 +52,32 @@ except Exception as e:
 st.title("🤟 Real-Time Sign Language Detector")
 
 # Show appropriate message based on environment
-if is_streamlit_cloud or import_error:
-    st.error("""
-    ⚠️ **OpenGL/Camera Not Available in This Environment**
+if is_cloud or import_error:
+    st.error(f"""
+    ⚠️ **Camera Not Available on {platform}**
     
-    This app requires real-time camera access, which isn't supported on Streamlit Cloud (headless server).
+    This app requires real-time camera access, which isn't supported on cloud deployments (headless server).
     """)
     
     st.info("""
-    ### 🚀 **3 Ways to Use This App:**
+    ### 🚀 **How to Use This App:**
     
-    #### **1. Run Locally (Fastest Setup ⭐)**
+    #### **1. Run Locally (Best Experience ⭐)**
+    Run on your computer with camera access:
     ```bash
     pip install -r requirements.txt
     streamlit run app.py
     ```
-    Then access: http://localhost:8501
+    Then open: http://localhost:8501
     
-    #### **2. Deploy with Camera Support (Railway/Render)**
-    - See [STREAMLIT_DEPLOYMENT.md](STREAMLIT_DEPLOYMENT.md) for detailed instructions
-    - Railway.app or Render.com support Docker with full system libraries
-    - Free tier available!
+    #### **2. Why Cloud Doesn't Work**
+    - Cloud servers have **no physical camera**
+    - No display output (headless)
+    - This app needs real-time video processing
     
-    #### **3. Cloud Demo Version (No Camera)**
-    - Create `app_cloud.py` with image upload instead
-    - Deploy to Streamlit Cloud
+    #### **3. For Cloud Demo**
+    - Create a version with image upload instead
+    - Or use a Jupyter notebook locally
     """)
     
     if import_error:
@@ -245,6 +264,22 @@ predicted_character = ""
 
 # Real-time detection
 if st.session_state.detection_running:
+    # Check if running in cloud environment
+    if is_cloud:
+        st.error(f"""
+        ❌ **Camera Access Not Available on {platform}**
+        
+        This app cannot access a camera in a cloud environment.
+        
+        **Please run this app locally:**
+        ```bash
+        pip install -r requirements.txt
+        streamlit run app.py
+        ```
+        """)
+        st.session_state.detection_running = False
+        st.stop()
+    
     cap = cv2.VideoCapture(0)
     
     if not cap.isOpened():
