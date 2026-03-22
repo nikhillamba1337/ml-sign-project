@@ -1,7 +1,5 @@
 import streamlit as st
-import cv2
 import pickle
-import mediapipe as mp
 import numpy as np
 import os
 import time
@@ -11,8 +9,46 @@ import sys
 import warnings
 warnings.filterwarnings('ignore')
 
+# Check if running on Streamlit Cloud (no camera support)
+is_streamlit_cloud = os.environ.get('STREAMLIT_SERVER_HEADLESS', '').lower() == 'true'
+
 # Page configuration
 st.set_page_config(page_title="Sign Language Detector", layout="wide", initial_sidebar_state="collapsed")
+
+# Show deployment warning
+if is_streamlit_cloud:
+    st.error("""
+    ⚠️ **This app requires a local installation with camera access**
+    
+    Streamlit Cloud doesn't support webcam access (it's a headless server).
+    
+    **To use this app:**
+    1. Clone the repository to your computer
+    2. Install dependencies: `pip install -r requirements.txt`
+    3. Run locally: `streamlit run app.py`
+    4. Access at: http://localhost:8501
+    
+    This will give you full access to your camera for real-time sign language detection.
+    """)
+    st.stop()
+
+# Import CV2 for local deployment
+try:
+    import cv2
+    import mediapipe as mp
+except ImportError as e:
+    st.error(f"""
+    ❌ **Import Error: {str(e)}**
+    
+    Please install required packages:
+    ```bash
+    pip install -r requirements.txt
+    ```
+    """)
+    st.stop()
+
+# Title Section
+st.title("🤟 Real-Time Sign Language Detector")
 
 # Global keyboard event listener
 st.markdown("""
@@ -46,9 +82,6 @@ document.addEventListener('keydown', function(e) {
 }, true); // Capture phase for reliability
 </script>
 """, unsafe_allow_html=True)
-
-# Title Section
-st.title("🤟 Real-Time Sign Language Detector")
 
 # Load model with error handling
 @st.cache_resource
