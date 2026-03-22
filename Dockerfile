@@ -12,7 +12,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxext6 \
     libxrender1 \
     libgomp1 \
-    libpython3.11 \
     libopengl0 \
     && rm -rf /var/lib/apt/lists/*
 
