@@ -14,7 +14,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     libopengl0 \
     libglx0 \
-    && rm -rf /var/lib/apt/lists/*
+    libglvnd0 \
+    libgl1-mesa-dri \
+    libgl1 \
+    && rm -rf /var/lib/apt/lists/* \
+    && ldconfig
 
 # Copy requirements and install Python dependencies
 COPY requirements_render.txt .
