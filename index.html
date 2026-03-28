@@ -170,8 +170,10 @@
             if (!isDetecting || !video || !stream) return;
 
             try {
+                // Draw video frame
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
+                // Send frame to backend for processing
                 if (!isProcessing) {
                     isProcessing = true;
                     const imageData = canvas.toDataURL('image/jpeg', 0.85);
@@ -183,27 +185,40 @@
                     })
                     .then(response => response.json())
                     .then(result => {
-                        // Update detected letter from result
+                        // Update current letter and confidence
                         if (result.detected_letter) {
                             currentLetter = result.detected_letter.letter;
                             currentConfidence = result.detected_letter.confidence;
                         }
 
-                        // Draw landmarks and bounding box (always if available)
+                        // Draw hands and landmarks if available
                         if (result.landmarks) {
                             drawLandmarks(result.landmarks);
-                            // Update letter from landmarks too
-                            if (result.landmarks.letter && result.landmarks.letter !== '?') {
-                                currentLetter = result.landmarks.letter;
-                            }
                         }
-                        
+
                         updateDisplay();
                     })
                     .catch(error => console.error('Error:', error))
                     .finally(() => {
                         isProcessing = false;
                     });
+                }
+
+                // Update FPS counter
+                frameCount++;
+                const now = Date.now();
+                if (now - lastFpsTime >= 1000) {
+                    fpsDisplay.textContent = frameCount;
+                    frameCount = 0;
+                    lastFpsTime = now;
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+            }
+
+            animationId = requestAnimationFrame(processFrame);
+        }
                 }
 
                 frameCount++;
@@ -222,26 +237,27 @@
         }
 
         function drawLandmarks(landmarks) {
-            const points = landmarks.points;
             const w = canvas.width;
             const h = canvas.height;
+            const points = landmarks.points;
 
-            // Draw bounding box
-            const boxX1 = landmarks.x_min * w;
-            const boxY1 = landmarks.y_min * h;
-            const boxX2 = landmarks.x_max * w;
-            const boxY2 = landmarks.y_max * h;
+            // Draw bounding box (black rectangle)
+            const x1 = landmarks.x_min * w;
+            const y1 = landmarks.y_min * h;
+            const x2 = landmarks.x_max * w;
+            const y2 = landmarks.y_max * h;
 
             ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 3;
-            ctx.strokeRect(boxX1, boxY1, boxX2 - boxX1, boxY2 - boxY1);
+            ctx.lineWidth = 4;
+            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-            // Draw landmark circles and lines
+            // Draw predicted letter above bounding box
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 50px Arial';
+            ctx.fillText(landmarks.letter, x1 + 10, y1 - 10);
+
+            // Draw green circles on landmark points
             ctx.fillStyle = '#00FF00';
-            ctx.strokeStyle = '#00FF00';
-            ctx.lineWidth = 2;
-
-            // Draw circles at each point
             for (let i = 0; i < points.length; i++) {
                 const x = points[i].x * w;
                 const y = points[i].y * h;
@@ -250,33 +266,26 @@
                 ctx.fill();
             }
 
-            // Draw hand skeleton connections
+            // Draw green lines connecting landmarks (hand skeleton)
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 2;
+
             const connections = [
-                [0, 1], [1, 2], [2, 3], [3, 4],  // Thumb
-                [0, 5], [5, 6], [6, 7], [7, 8],  // Index
-                [0, 9], [9, 10], [10, 11], [11, 12],  // Middle
-                [0, 13], [13, 14], [14, 15], [15, 16],  // Ring
-                [0, 17], [17, 18], [18, 19], [19, 20]   // Pinky
+                [0, 1], [1, 2], [2, 3], [3, 4],
+                [0, 5], [5, 6], [6, 7], [7, 8],
+                [0, 9], [9, 10], [10, 11], [11, 12],
+                [0, 13], [13, 14], [14, 15], [15, 16],
+                [0, 17], [17, 18], [18, 19], [19, 20]
             ];
 
             for (const [start, end] of connections) {
                 if (start < points.length && end < points.length) {
-                    const x1 = points[start].x * w;
-                    const y1 = points[start].y * h;
-                    const x2 = points[end].x * w;
-                    const y2 = points[end].y * h;
-                    
                     ctx.beginPath();
-                    ctx.moveTo(x1, y1);
-                    ctx.lineTo(x2, y2);
+                    ctx.moveTo(points[start].x * w, points[start].y * h);
+                    ctx.lineTo(points[end].x * w, points[end].y * h);
                     ctx.stroke();
                 }
             }
-
-            // Draw predicted letter above bounding box
-            ctx.fillStyle = '#000000';
-            ctx.font = 'bold 48px Arial';
-            ctx.fillText(landmarks.letter, boxX1 + 10, boxY1 - 15);
         }
 
         function updateDisplay() {
