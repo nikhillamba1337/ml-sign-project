@@ -170,13 +170,21 @@
             if (!isDetecting || !video || !stream) return;
 
             try {
-                // Draw video frame
+                // Draw video frame (non-flipped) to get correct image data for backend
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                // Get image data to send to backend (unflipped for correct predictions)
+                const imageData = canvas.toDataURL('image/jpeg', 0.85);
 
-                // Send frame to backend for processing
+                // Now flip the canvas for display (mirror effect)
+                ctx.save();
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+                ctx.restore();
+
+                // Send original (non-flipped) frame to backend for processing
                 if (!isProcessing) {
                     isProcessing = true;
-                    const imageData = canvas.toDataURL('image/jpeg', 0.85);
                     
                     fetch('/process_frame', {
                         method: 'POST',
@@ -225,10 +233,10 @@
             const h = canvas.height;
             const points = landmarks.points;
 
-            // Draw bounding box (black rectangle)
-            const x1 = landmarks.x_min * w;
+            // Flip x-coordinates to match the mirrored display
+            const x1 = (1 - landmarks.x_max) * w;
+            const x2 = (1 - landmarks.x_min) * w;
             const y1 = landmarks.y_min * h;
-            const x2 = landmarks.x_max * w;
             const y2 = landmarks.y_max * h;
 
             ctx.strokeStyle = '#000000';
@@ -243,7 +251,7 @@
             // Draw green circles on landmark points
             ctx.fillStyle = '#00FF00';
             for (let i = 0; i < points.length; i++) {
-                const x = points[i].x * w;
+                const x = (1 - points[i].x) * w;  // Flip x coordinate
                 const y = points[i].y * h;
                 ctx.beginPath();
                 ctx.arc(x, y, 5, 0, 2 * Math.PI);
@@ -265,8 +273,8 @@
             for (const [start, end] of connections) {
                 if (start < points.length && end < points.length) {
                     ctx.beginPath();
-                    ctx.moveTo(points[start].x * w, points[start].y * h);
-                    ctx.lineTo(points[end].x * w, points[end].y * h);
+                    ctx.moveTo((1 - points[start].x) * w, points[start].y * h);  // Flip x
+                    ctx.lineTo((1 - points[end].x) * w, points[end].y * h);       // Flip x
                     ctx.stroke();
                 }
             }
