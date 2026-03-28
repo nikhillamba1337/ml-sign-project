@@ -119,33 +119,42 @@ def process_frame():
             
             # Ensure we have exactly 42 features
             if len(data_aux) == 42:
-                # Predict
-                prediction = model.predict([np.asarray(data_aux)])
-                predicted_char = prediction[0]
-                
-                # Get confidence if available
-                confidence = getattr(model, 'predict_proba', lambda x: None)([np.asarray(data_aux)])
-                conf_score = float(np.max(confidence[0])) if confidence is not None else 0.0
-                
-                detected_letter = {
-                    'letter': str(predicted_char),
-                    'confidence': round(conf_score, 2)
-                }
-                
-                # Get bounding box
-                x_coords = [lm.x for lm in landmarks.landmark]
-                y_coords = [lm.y for lm in landmarks.landmark]
-                
-                x_min, x_max = min(x_coords), max(x_coords)
-                y_min, y_max = min(y_coords), max(y_coords)
-                
-                hand_landmarks = {
-                    'x_min': float(x_min),
-                    'x_max': float(x_max),
-                    'y_min': float(y_min),
-                    'y_max': float(y_max),
-                    'letter': str(predicted_char)
-                }
+                try:
+                    # Prepare input
+                    input_data = np.asarray([data_aux])
+                    
+                    # Predict
+                    prediction = model.predict(input_data)
+                    predicted_char = str(prediction[0])
+                    
+                    # Get confidence if available
+                    try:
+                        probabilities = model.predict_proba(input_data)
+                        conf_score = float(np.max(probabilities[0]))
+                    except:
+                        conf_score = 0.75  # Default confidence for models without proba
+                    
+                    detected_letter = {
+                        'letter': predicted_char,
+                        'confidence': round(conf_score, 2)
+                    }
+                    
+                    # Get bounding box
+                    x_coords = [lm.x for lm in landmarks.landmark]
+                    y_coords = [lm.y for lm in landmarks.landmark]
+                    
+                    x_min, x_max = min(x_coords), max(x_coords)
+                    y_min, y_max = min(y_coords), max(y_coords)
+                    
+                    hand_landmarks = {
+                        'x_min': float(x_min),
+                        'x_max': float(x_max),
+                        'y_min': float(y_min),
+                        'y_max': float(y_max),
+                        'letter': predicted_char
+                    }
+                except Exception as pred_error:
+                    logger.error(f"Prediction error: {pred_error}")
         
         return jsonify({
             'status': 'success',
