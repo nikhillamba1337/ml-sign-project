@@ -122,7 +122,20 @@ def process_frame():
                 data_aux.append(lm.x - min_x)
                 data_aux.append(lm.y - min_y)
             
-            # Ensure we have exactly 42 features
+            # Bounding box coordinates (always return these for drawing)
+            x_min, x_max = min(x_coords), max(x_coords)
+            y_min, y_max = min(y_coords), max(y_coords)
+            
+            landmarks_data = {
+                'points': landmark_points,
+                'x_min': float(x_min),
+                'x_max': float(x_max),
+                'y_min': float(y_min),
+                'y_max': float(y_max),
+                'letter': '?'
+            }
+            
+            # Ensure we have exactly 42 features for prediction
             if len(data_aux) == 42:
                 try:
                     # Prepare input (same as original inference_classifier.py)
@@ -147,18 +160,9 @@ def process_frame():
                         'confidence': round(conf_score, 2)
                     }
                     
-                    # Bounding box coordinates
-                    x_min, x_max = min(x_coords), max(x_coords)
-                    y_min, y_max = min(y_coords), max(y_coords)
+                    # Update landmarks with predicted letter
+                    landmarks_data['letter'] = predicted_character
                     
-                    landmarks_data = {
-                        'points': landmark_points,
-                        'x_min': float(x_min),
-                        'x_max': float(x_max),
-                        'y_min': float(y_min),
-                        'y_max': float(y_max),
-                        'letter': predicted_character
-                    }
                 except Exception as pred_error:
                     logger.error(f"Prediction error: {pred_error}")
         

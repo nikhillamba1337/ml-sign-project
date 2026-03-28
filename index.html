@@ -183,16 +183,22 @@
                     })
                     .then(response => response.json())
                     .then(result => {
+                        // Update detected letter from result
                         if (result.detected_letter) {
                             currentLetter = result.detected_letter.letter;
                             currentConfidence = result.detected_letter.confidence;
-                            updateDisplay();
                         }
 
-                        // Draw landmarks and bounding box
-                        if (result.landmarks && result.landmarks.points) {
+                        // Draw landmarks and bounding box (always if available)
+                        if (result.landmarks) {
                             drawLandmarks(result.landmarks);
+                            // Update letter from landmarks too
+                            if (result.landmarks.letter && result.landmarks.letter !== '?') {
+                                currentLetter = result.landmarks.letter;
+                            }
                         }
+                        
+                        updateDisplay();
                     })
                     .catch(error => console.error('Error:', error))
                     .finally(() => {
@@ -221,14 +227,14 @@
             const h = canvas.height;
 
             // Draw bounding box
-            const x1 = landmarks.x_min * w;
-            const y1 = landmarks.y_min * h;
-            const x2 = landmarks.x_max * w;
-            const y2 = landmarks.y_max * h;
+            const boxX1 = landmarks.x_min * w;
+            const boxY1 = landmarks.y_min * h;
+            const boxX2 = landmarks.x_max * w;
+            const boxY2 = landmarks.y_max * h;
 
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 3;
-            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+            ctx.strokeRect(boxX1, boxY1, boxX2 - boxX1, boxY2 - boxY1);
 
             // Draw landmark circles and lines
             ctx.fillStyle = '#00FF00';
@@ -240,7 +246,7 @@
                 const x = points[i].x * w;
                 const y = points[i].y * h;
                 ctx.beginPath();
-                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                ctx.arc(x, y, 5, 0, 2 * Math.PI);
                 ctx.fill();
             }
 
@@ -267,10 +273,10 @@
                 }
             }
 
-            // Draw predicted letter
+            // Draw predicted letter above bounding box
             ctx.fillStyle = '#000000';
-            ctx.font = 'bold 40px Arial';
-            ctx.fillText(landmarks.letter, Math.max(10, x1), Math.max(40, y1 - 10));
+            ctx.font = 'bold 48px Arial';
+            ctx.fillText(landmarks.letter, boxX1 + 10, boxY1 - 15);
         }
 
         function updateDisplay() {
