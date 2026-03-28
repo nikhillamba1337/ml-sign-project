@@ -5,7 +5,6 @@ import pickle
 import mediapipe as mp
 import base64
 from io import BytesIO
-import joblib
 import os
 import logging
 
@@ -26,21 +25,14 @@ def load_model():
     """Load the trained classifier model"""
     global model
     try:
-        # Try joblib first
-        model = joblib.load(MODEL_PATH)
-        if isinstance(model, dict) and 'model' in model:
-            model = model['model']
-        logger.info("Model loaded with joblib")
-    except:
-        # Fallback to pickle with latin1 encoding
-        try:
-            with open(MODEL_PATH, 'rb') as f:
-                data = pickle.load(f, encoding='latin1')
-                model = data if isinstance(data, object) else data.get('model', data)
-            logger.info("Model loaded with pickle")
-        except Exception as e:
-            logger.error(f"Failed to load model: {e}")
-            return False
+        # Load model as dictionary
+        with open(MODEL_PATH, 'rb') as f:
+            model_dict = pickle.load(f)
+            model = model_dict['model']
+        logger.info("Model loaded successfully")
+    except Exception as e:
+        logger.error(f"Failed to load model: {e}")
+        return False
     return True
 
 def initialize_mediapipe():
@@ -111,11 +103,21 @@ def process_frame():
         if results.multi_hand_landmarks and len(results.multi_hand_landmarks) > 0:
             landmarks = results.multi_hand_landmarks[0]
             
-            # Extract and normalize landmarks
+            # Extract coordinates
+            x_coords = []
+            y_coords = []
+            for lm in landmarks.landmark:
+                x_coords.append(lm.x)
+                y_coords.append(lm.y)
+            
+            # Normalize landmarks by subtracting min values (same as training)
+            min_x = min(x_coords)
+            min_y = min(y_coords)
+            
             data_aux = []
             for lm in landmarks.landmark:
-                data_aux.append(lm.x)
-                data_aux.append(lm.y)
+                data_aux.append(lm.x - min_x)
+                data_aux.append(lm.y - min_y)
             
             # Ensure we have exactly 42 features
             if len(data_aux) == 42:
@@ -132,7 +134,7 @@ def process_frame():
                         probabilities = model.predict_proba(input_data)
                         conf_score = float(np.max(probabilities[0]))
                     except:
-                        conf_score = 0.75  # Default confidence for models without proba
+                        conf_score = 0.75  # Default confidence
                     
                     detected_letter = {
                         'letter': predicted_char,
@@ -140,9 +142,6 @@ def process_frame():
                     }
                     
                     # Get bounding box
-                    x_coords = [lm.x for lm in landmarks.landmark]
-                    y_coords = [lm.y for lm in landmarks.landmark]
-                    
                     x_min, x_max = min(x_coords), max(x_coords)
                     y_min, y_max = min(y_coords), max(y_coords)
                     

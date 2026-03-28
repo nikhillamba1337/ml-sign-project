@@ -174,22 +174,25 @@
 
                 if (!isProcessing) {
                     isProcessing = true;
-                    const imageData = canvas.toDataURL('image/jpeg', 0.8);
-                    const response = await fetch('/process_frame', {
+                    const imageData = canvas.toDataURL('image/jpeg', 0.85);
+                    
+                    fetch('/process_frame', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ image: imageData })
-                    });
-
-                    if (response.ok) {
-                        const result = await response.json();
+                    })
+                    .then(response => response.json())
+                    .then(result => {
                         if (result.detected_letter) {
                             currentLetter = result.detected_letter.letter;
                             currentConfidence = result.detected_letter.confidence;
                             updateDisplay();
                         }
-                    }
-                    isProcessing = false;
+                    })
+                    .catch(error => console.error('Error:', error))
+                    .finally(() => {
+                        isProcessing = false;
+                    });
                 }
 
                 frameCount++;
@@ -202,7 +205,6 @@
 
             } catch (error) {
                 console.error('Error:', error);
-                isProcessing = false;
             }
 
             animationId = requestAnimationFrame(processFrame);
