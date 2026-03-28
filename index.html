@@ -219,22 +219,6 @@
 
             animationId = requestAnimationFrame(processFrame);
         }
-                }
-
-                frameCount++;
-                const now = Date.now();
-                if (now - lastFpsTime >= 1000) {
-                    fpsDisplay.textContent = frameCount;
-                    frameCount = 0;
-                    lastFpsTime = now;
-                }
-
-            } catch (error) {
-                console.error('Error:', error);
-            }
-
-            animationId = requestAnimationFrame(processFrame);
-        }
 
         function drawLandmarks(landmarks) {
             const w = canvas.width;
