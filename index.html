@@ -188,6 +188,11 @@
                             currentConfidence = result.detected_letter.confidence;
                             updateDisplay();
                         }
+
+                        // Draw landmarks and bounding box
+                        if (result.landmarks && result.landmarks.points) {
+                            drawLandmarks(result.landmarks);
+                        }
                     })
                     .catch(error => console.error('Error:', error))
                     .finally(() => {
@@ -208,6 +213,64 @@
             }
 
             animationId = requestAnimationFrame(processFrame);
+        }
+
+        function drawLandmarks(landmarks) {
+            const points = landmarks.points;
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Draw bounding box
+            const x1 = landmarks.x_min * w;
+            const y1 = landmarks.y_min * h;
+            const x2 = landmarks.x_max * w;
+            const y2 = landmarks.y_max * h;
+
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+            // Draw landmark circles and lines
+            ctx.fillStyle = '#00FF00';
+            ctx.strokeStyle = '#00FF00';
+            ctx.lineWidth = 2;
+
+            // Draw circles at each point
+            for (let i = 0; i < points.length; i++) {
+                const x = points[i].x * w;
+                const y = points[i].y * h;
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, 2 * Math.PI);
+                ctx.fill();
+            }
+
+            // Draw hand skeleton connections
+            const connections = [
+                [0, 1], [1, 2], [2, 3], [3, 4],  // Thumb
+                [0, 5], [5, 6], [6, 7], [7, 8],  // Index
+                [0, 9], [9, 10], [10, 11], [11, 12],  // Middle
+                [0, 13], [13, 14], [14, 15], [15, 16],  // Ring
+                [0, 17], [17, 18], [18, 19], [19, 20]   // Pinky
+            ];
+
+            for (const [start, end] of connections) {
+                if (start < points.length && end < points.length) {
+                    const x1 = points[start].x * w;
+                    const y1 = points[start].y * h;
+                    const x2 = points[end].x * w;
+                    const y2 = points[end].y * h;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2, y2);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw predicted letter
+            ctx.fillStyle = '#000000';
+            ctx.font = 'bold 40px Arial';
+            ctx.fillText(landmarks.letter, Math.max(10, x1), Math.max(40, y1 - 10));
         }
 
         function updateDisplay() {

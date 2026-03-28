@@ -98,7 +98,7 @@ def process_frame():
         results = hands.process(rgb_frame)
         
         detected_letter = None
-        hand_landmarks = None
+        landmarks_data = None
         
         if results.multi_hand_landmarks and len(results.multi_hand_landmarks) > 0:
             landmarks = results.multi_hand_landmarks[0]
@@ -106,9 +106,12 @@ def process_frame():
             # Extract coordinates
             x_coords = []
             y_coords = []
+            landmark_points = []  # Store for drawing
+            
             for lm in landmarks.landmark:
                 x_coords.append(lm.x)
                 y_coords.append(lm.y)
+                landmark_points.append({'x': float(lm.x), 'y': float(lm.y)})
             
             # Normalize landmarks by subtracting min values (same as training)
             min_x = min(x_coords)
@@ -122,35 +125,39 @@ def process_frame():
             # Ensure we have exactly 42 features
             if len(data_aux) == 42:
                 try:
-                    # Prepare input
+                    # Prepare input (same as original inference_classifier.py)
                     input_data = np.asarray([data_aux])
                     
-                    # Predict
+                    # Predict (same logic as inference_classifier)
                     prediction = model.predict(input_data)
-                    predicted_char = str(prediction[0])
+                    if isinstance(prediction[0], str):
+                        predicted_character = prediction[0]
+                    else:
+                        predicted_character = labels_dict[int(prediction[0])]
                     
                     # Get confidence if available
                     try:
                         probabilities = model.predict_proba(input_data)
                         conf_score = float(np.max(probabilities[0]))
                     except:
-                        conf_score = 0.75  # Default confidence
+                        conf_score = 0.75
                     
                     detected_letter = {
-                        'letter': predicted_char,
+                        'letter': predicted_character,
                         'confidence': round(conf_score, 2)
                     }
                     
-                    # Get bounding box
+                    # Bounding box coordinates
                     x_min, x_max = min(x_coords), max(x_coords)
                     y_min, y_max = min(y_coords), max(y_coords)
                     
-                    hand_landmarks = {
+                    landmarks_data = {
+                        'points': landmark_points,
                         'x_min': float(x_min),
                         'x_max': float(x_max),
                         'y_min': float(y_min),
                         'y_max': float(y_max),
-                        'letter': predicted_char
+                        'letter': predicted_character
                     }
                 except Exception as pred_error:
                     logger.error(f"Prediction error: {pred_error}")
@@ -158,7 +165,7 @@ def process_frame():
         return jsonify({
             'status': 'success',
             'detected_letter': detected_letter,
-            'hand_landmarks': hand_landmarks
+            'landmarks': landmarks_data
         })
     
     except Exception as e:
