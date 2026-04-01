@@ -87,7 +87,7 @@ def process_frame():
         if frame is None:
             return jsonify({'error': 'Failed to decode image'}), 400
         
-        # Convert color space (note: frame is received non-flipped from frontend)
+        # Process with frame as-is (matches inference_classifier.py training orientation)
         h, w, c = frame.shape
         
         # Process with MediaPipe
@@ -111,6 +111,7 @@ def process_frame():
                 landmark_points.append({'x': float(lm.x), 'y': float(lm.y)})
             
             # Normalize landmarks by subtracting min values (same as training)
+            # Must normalize in the same space as training for accurate predictions
             min_x = min(x_coords)
             min_y = min(y_coords)
             
@@ -119,7 +120,7 @@ def process_frame():
                 data_aux.append(lm.x - min_x)
                 data_aux.append(lm.y - min_y)
             
-            # Bounding box coordinates (always return these for drawing)
+            # Bounding box coordinates
             x_min, x_max = min(x_coords), max(x_coords)
             y_min, y_max = min(y_coords), max(y_coords)
             

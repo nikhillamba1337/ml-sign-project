@@ -170,11 +170,11 @@
             if (!isDetecting || !video || !stream) return;
 
             try {
-                // Draw video frame (non-flipped) to get correct image data for backend
+                // Draw video frame for backend processing (unflipped)
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                 
-                // Get image data to send to backend (unflipped for correct predictions)
-                const imageData = canvas.toDataURL('image/jpeg', 0.85);
+                // Get high-quality image data to send to backend for accurate predictions
+                const imageData = canvas.toDataURL('image/jpeg', 0.95);
 
                 // Now flip the canvas for display (mirror effect)
                 ctx.save();
