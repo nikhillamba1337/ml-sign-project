@@ -42,9 +42,7 @@ def initialize_mediapipe():
         mp_hands = mp.solutions.hands
         hands = mp_hands.Hands(
             static_image_mode=False,
-            max_num_hands=1,
-            min_detection_confidence=0.3,
-            min_tracking_confidence=0.3
+            min_detection_confidence=0.3
         )
         logger.info("MediaPipe initialized")
         return True
@@ -89,8 +87,7 @@ def process_frame():
         if frame is None:
             return jsonify({'error': 'Failed to decode image'}), 400
         
-        # Flip and convert color space
-        frame = cv2.flip(frame, 1)
+        # Convert color space (note: frame is received non-flipped from frontend)
         h, w, c = frame.shape
         
         # Process with MediaPipe
@@ -135,7 +132,13 @@ def process_frame():
                 'letter': '?'
             }
             
-            # Ensure we have exactly 42 features for prediction
+            # Ensure we have exactly 42 features for prediction (same as inference_classifier.py)
+            fixed_size = 42
+            if len(data_aux) < fixed_size:
+                data_aux = data_aux + [0] * (fixed_size - len(data_aux))  # Pad with zeros
+            elif len(data_aux) > fixed_size:
+                data_aux = data_aux[:fixed_size]  # Truncate to fixed size
+            
             if len(data_aux) == 42:
                 try:
                     # Prepare input (same as original inference_classifier.py)
