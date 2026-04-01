@@ -3,160 +3,394 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sign Language Detector</title>
+    <meta name="description" content="Real-time American Sign Language Detector">
+    <title>SignFlow • Live ASL Translator</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --primary: #3b82f6;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: #f0f0f0; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .container { background: white; padding: 20px; border-radius: 10px; max-width: 1000px; width: 100%; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { text-align: center; margin-bottom: 20px; color: #333; }
-        .main { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .left { display: flex; flex-direction: column; gap: 15px; }
-        .right { display: flex; flex-direction: column; gap: 15px; }
 
-        /* Two-canvas stack: hidden capture canvas + visible display canvas */
-        .canvas-wrapper { position: relative; background: #000; border-radius: 8px; overflow: hidden; }
-        #displayCanvas { width: 100%; height: auto; display: block; }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #0a0f1c;
+            color: #e2e8f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .container {
+            background: #111827;
+            border-radius: 24px;
+            max-width: 1120px;
+            width: 100%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+            border: 1px solid #1f2937;
+            overflow: hidden;
+        }
+
+        header {
+            padding: 28px 40px;
+            border-bottom: 1px solid #1f2937;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .logo {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -1px;
+        }
+
+        .badge {
+            background: #22c55e;
+            color: #111827;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 4px 14px;
+            border-radius: 9999px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .main {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            padding: 40px;
+        }
+
+        .left, .right {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            background: #000;
+            border-radius: 20px;
+            overflow: hidden;
+            border: 3px solid #1f2937;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        #displayCanvas {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
         #captureCanvas { display: none; }
-        .fps-display { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #0f0; padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; }
 
-        .button-group { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        button { padding: 10px; border: none; border-radius: 5px; font-size: 14px; cursor: pointer; font-weight: bold; transition: opacity 0.2s; }
-        button:hover { opacity: 0.8; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-primary { background: #007bff; color: white; grid-column: 1 / -1; }
-        .btn-danger  { background: #dc3545; color: white; }
-        .btn-success { background: #28a745; color: white; }
+        .fps-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.75);
+            color: #22c55e;
+            padding: 6px 16px;
+            border-radius: 9999px;
+            font-size: 13px;
+            font-weight: 700;
+            backdrop-filter: blur(8px);
+        }
 
-        .info-box { background: #f9f9f9; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; }
-        .info-box h3 { color: #007bff; margin-bottom: 10px; font-size: 14px; }
-        .info-box p  { font-size: 13px; color: #666; margin: 5px 0; }
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
 
-        .status { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: 13px; }
+        button {
+            padding: 16px 24px;
+            border: none;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        button:hover { transform: translateY(-2px); }
+        button:active { transform: scale(0.97); }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            grid-column: 1 / -1;
+            font-size: 17px;
+        }
+
+        .btn-success { background: #22c55e; color: #111827; }
+        .btn-danger  { background: #ef4444; color: white; }
+
+        button:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .detected-letter {
+            background: #1f2937;
+            border: 4px solid #3b82f6;
+            border-radius: 20px;
+            padding: 36px 24px;
+            text-align: center;
+            font-size: 5rem;
+            font-weight: 700;
+            min-height: 220px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: inset 0 6px 20px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .detected-letter.waiting {
+            font-size: 2.4rem;
+            color: #94a3b8;
+            font-weight: 500;
+        }
+
+        .detected-letter.high {
+            border-color: #22c55e;
+        }
+
+        .confidence-text {
+            font-size: 1.2rem;
+            margin-top: 16px;
+            color: #93c5fd;
+            font-weight: 500;
+        }
+
+        .info-box {
+            background: #1f2937;
+            padding: 24px;
+            border-radius: 20px;
+            border: 1px solid #374151;
+        }
+
+        .status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid #374151;
+            font-size: 15px;
+        }
+
         .status:last-child { border-bottom: none; }
-        .status-label { font-weight: bold; color: #333; }
-        .status-value { color: #007bff; font-weight: bold; }
 
-        .detected-letter { background: #007bff; color: white; padding: 20px; border-radius: 8px; text-align: center; font-size: 48px; font-weight: bold; min-height: 100px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .confidence-text { font-size: 14px; opacity: 0.9; margin-top: 10px; }
+        .status-label {
+            color: #9ca3af;
+            font-weight: 500;
+        }
 
-        .text-output { background: #f9f9f9; padding: 15px; border-radius: 5px; min-height: 80px; border: 1px solid #ddd; font-size: 16px; word-wrap: break-word; line-height: 1.5; color: #333; }
-        .text-output:empty::before { content: "Detected text will appear here..."; color: #999; }
+        .status-value {
+            font-weight: 700;
+            color: #60a5fa;
+        }
+
+        .text-output {
+            background: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 20px;
+            padding: 28px;
+            min-height: 148px;
+            font-size: 1.45rem;
+            line-height: 1.65;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+            box-shadow: inset 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .text-output:empty::before {
+            content: "Translated text appears here…";
+            color: #6b7280;
+            font-style: italic;
+        }
+
+        .copy-btn {
+            background: #374151;
+            color: #e2e8f0;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .copy-btn:hover { background: #4b5563; }
+
+        .keyboard-shortcuts {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+            gap: 12px;
+        }
+
+        .shortcut {
+            background: #1f2937;
+            padding: 12px 16px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .key {
+            background: #374151;
+            color: #60a5fa;
+            width: 34px;
+            height: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 24px;
+            color: #64748b;
+            font-size: 14px;
+            border-top: 1px solid #1f2937;
+        }
 
         @media (max-width: 768px) {
             .main { grid-template-columns: 1fr; }
-            .detected-letter { font-size: 36px; }
+            .detected-letter { font-size: 3.8rem; }
+            .detected-letter.waiting { font-size: 1.95rem; }
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <h1>Sign Language Detector</h1>
+    <header>
+        <div class="logo">SignFlow</div>
+        <div class="badge">
+            <span style="display:inline-block;width:8px;height:8px;background:#111827;border-radius:50%;animation:pulse 2s infinite;"></span>
+            LIVE
+        </div>
+    </header>
+
     <div class="main">
         <div class="left">
             <div class="canvas-wrapper">
-                <!--
-                  Two-canvas design:
-                  • captureCanvas: receives the raw (non-mirrored) frame from the
-                    webcam for sending to the Flask backend.  Matches what
-                    cv2.VideoCapture gives in inference_classifier.py.
-                  • displayCanvas: shows the mirrored (selfie) view with landmarks
-                    overlaid so the user sees a natural mirror image.
-                -->
                 <canvas id="captureCanvas" width="640" height="480"></canvas>
                 <canvas id="displayCanvas" width="640" height="480"></canvas>
                 <div class="fps-display">FPS: <span id="fps">0</span></div>
             </div>
+
             <div class="button-group">
-                <button class="btn-primary"  id="startBtn">Start</button>
-                <button class="btn-danger"   id="stopBtn"    disabled>Stop</button>
-                <button class="btn-success"  id="captureBtn">Capture (S)</button>
-                <button class="btn-danger"   id="deleteBtn">Delete (B)</button>
-                <button class="btn-success"  id="spaceBtn">Space (V)</button>
-                <button class="btn-danger"   id="clearBtn">Clear (C)</button>
+                <button class="btn-primary" id="startBtn">▶ Start Camera</button>
+                <button class="btn-danger" id="stopBtn" disabled>⏹ Stop Camera</button>
+                <button class="btn-success" id="captureBtn">📸 Capture (S)</button>
+                <button class="btn-danger" id="deleteBtn">⌫ Delete (B)</button>
+                <button class="btn-success" id="spaceBtn">␣ Space (V)</button>
+                <button class="btn-danger" id="clearBtn">🗑 Clear (C)</button>
             </div>
+
             <div class="info-box">
-                <h3>Keyboard Controls</h3>
-                <p><strong>S</strong> — Capture letter</p>
-                <p><strong>B</strong> — Delete last</p>
-                <p><strong>V</strong> — Add space</p>
-                <p><strong>C</strong> — Clear all</p>
-                <p><strong>Q</strong> — Stop</p>
+                <h3 style="color:#93c5fd;margin-bottom:18px;font-weight:600;">⌨️ Keyboard Shortcuts</h3>
+                <div class="keyboard-shortcuts">
+                    <div class="shortcut"><span class="key">S</span>Capture Letter</div>
+                    <div class="shortcut"><span class="key">B</span>Delete Last</div>
+                    <div class="shortcut"><span class="key">V</span>Add Space</div>
+                    <div class="shortcut"><span class="key">C</span>Clear All</div>
+                    <div class="shortcut"><span class="key">Q</span>Stop Camera</div>
+                </div>
             </div>
         </div>
 
         <div class="right">
-            <div class="detected-letter" id="letterDisplay">Waiting...</div>
+            <div class="detected-letter waiting" id="letterDisplay">Waiting for sign…</div>
+
             <div class="info-box">
                 <div class="status">
-                    <span class="status-label">Camera:</span>
+                    <span class="status-label">Camera</span>
                     <span class="status-value" id="cameraStatus">OFF</span>
                 </div>
                 <div class="status">
-                    <span class="status-label">Detecting:</span>
+                    <span class="status-label">Detection</span>
                     <span class="status-value" id="detectingStatus">OFF</span>
                 </div>
                 <div class="status">
-                    <span class="status-label">Current:</span>
+                    <span class="status-label">Current Sign</span>
                     <span class="status-value" id="currentLetter">-</span>
                 </div>
                 <div class="status">
-                    <span class="status-label">Confidence:</span>
+                    <span class="status-label">Confidence</span>
                     <span class="status-value" id="confidence">-</span>
                 </div>
             </div>
+
             <div>
-                <h3 style="margin-bottom:10px;color:#333;">Detected Text</h3>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <h3 style="color:#93c5fd;font-weight:600;">Detected Text</h3>
+                    <button id="copyBtn" class="copy-btn">📋 Copy</button>
+                </div>
                 <div class="text-output" id="textOutput"></div>
             </div>
         </div>
     </div>
+
+    <div class="footer">
+        Real-time ASL Recognition • Built with MediaPipe + Flask • Private • No data stored
+    </div>
 </div>
 
 <script>
-    // ── Element refs ─────────────────────────────────────────────────────────
-    const captureCanvas  = document.getElementById('captureCanvas');
-    const captureCtx     = captureCanvas.getContext('2d');
-    const displayCanvas  = document.getElementById('displayCanvas');
-    const displayCtx     = displayCanvas.getContext('2d');
+    const captureCanvas = document.getElementById('captureCanvas');
+    const captureCtx = captureCanvas.getContext('2d');
+    const displayCanvas = document.getElementById('displayCanvas');
+    const displayCtx = displayCanvas.getContext('2d');
 
-    const startBtn       = document.getElementById('startBtn');
-    const stopBtn        = document.getElementById('stopBtn');
-    const captureBtn     = document.getElementById('captureBtn');
-    const deleteBtn      = document.getElementById('deleteBtn');
-    const spaceBtn       = document.getElementById('spaceBtn');
-    const clearBtn       = document.getElementById('clearBtn');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const captureBtn = document.getElementById('captureBtn');
+    const deleteBtn = document.getElementById('deleteBtn');
+    const spaceBtn = document.getElementById('spaceBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyBtn = document.getElementById('copyBtn');
 
-    const letterDisplay  = document.getElementById('letterDisplay');
-    const textOutput     = document.getElementById('textOutput');
-    const cameraStatus   = document.getElementById('cameraStatus');
-    const detectingStatus= document.getElementById('detectingStatus');
+    const letterDisplay = document.getElementById('letterDisplay');
+    const textOutput = document.getElementById('textOutput');
+    const cameraStatus = document.getElementById('cameraStatus');
+    const detectingStatus = document.getElementById('detectingStatus');
     const currentLetterD = document.getElementById('currentLetter');
     const confidenceDisp = document.getElementById('confidence');
-    const fpsDisplay     = document.getElementById('fps');
+    const fpsDisplay = document.getElementById('fps');
 
-    // ── State ─────────────────────────────────────────────────────────────────
-    let video          = null;
-    let stream         = null;
-    let isDetecting    = false;
-    let animationId    = null;
-    let isProcessing   = false;
-
-    let frameCount     = 0;
-    let lastFpsTime    = Date.now();
-
+    let video = null;
+    let stream = null;
+    let isDetecting = false;
+    let animationId = null;
+    let isProcessing = false;
+    let frameCount = 0;
+    let lastFpsTime = Date.now();
     let detectedLetters = [];
-    let currentLetter   = null;
-    let currentConf     = null;
-
-    // Latest landmarks returned by the server (used for the next draw pass)
+    let currentLetter = null;
+    let currentConf = null;
     let pendingLandmarks = null;
 
-    // ── Camera / detection lifecycle ─────────────────────────────────────────
     async function initVideo() {
         try {
             stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 640, height: 480, facingMode: 'user' },
-                audio: false,
+                video: { width: 640, height: 480, facingMode: 'user' }
             });
             video = document.createElement('video');
             video.srcObject = stream;
@@ -164,7 +398,7 @@
             await video.play();
             cameraStatus.textContent = 'ON';
         } catch (err) {
-            alert('Camera access denied: ' + err.message);
+            alert('Camera access denied or unavailable.');
         }
     }
 
@@ -174,7 +408,7 @@
         isDetecting = true;
         detectingStatus.textContent = 'ON';
         startBtn.disabled = true;
-        stopBtn.disabled  = false;
+        stopBtn.disabled = false;
         renderLoop();
     }
 
@@ -182,119 +416,96 @@
         isDetecting = false;
         detectingStatus.textContent = 'OFF';
         startBtn.disabled = false;
-        stopBtn.disabled  = true;
+        stopBtn.disabled = true;
+
         if (animationId) cancelAnimationFrame(animationId);
+
+        // Stop camera stream
         if (stream) {
             stream.getTracks().forEach(t => t.stop());
             stream = null;
-            video  = null;
+            video = null;
         }
+
         cameraStatus.textContent = 'OFF';
-        displayCtx.fillStyle = '#000';
+
+        // ✅ IMPORTANT: Clear canvas to black screen
+        displayCtx.fillStyle = '#000000';
         displayCtx.fillRect(0, 0, displayCanvas.width, displayCanvas.height);
+
+        pendingLandmarks = null;
     }
 
-    // ── Main render / send loop ───────────────────────────────────────────────
     function renderLoop() {
-        if (!isDetecting || !video || !stream) return;
+        if (!isDetecting || !video) return;
 
         const W = displayCanvas.width;
         const H = displayCanvas.height;
 
-        // ── 1. Capture raw (non-mirrored) frame for the backend ──────────────
-        //       This matches what cv2.VideoCapture(0) gives to
-        //       inference_classifier.py — raw sensor orientation.
         captureCtx.drawImage(video, 0, 0, W, H);
         const rawImageData = captureCanvas.toDataURL('image/jpeg', 0.92);
 
-        // ── 2. Draw mirrored (selfie) view on the display canvas ─────────────
         displayCtx.save();
         displayCtx.scale(-1, 1);
         displayCtx.drawImage(video, -W, 0, W, H);
         displayCtx.restore();
 
-        // ── 3. Draw any landmarks returned by the previous server response ────
-        //       (drawn on the already-mirrored display canvas so x is flipped)
-        if (pendingLandmarks) {
-            drawLandmarks(pendingLandmarks, W, H);
-        }
+        if (pendingLandmarks) drawLandmarks(pendingLandmarks, W, H);
 
-        // ── 4. Send raw frame to backend (throttled — one in-flight at a time)
         if (!isProcessing) {
             isProcessing = true;
             fetch('/process_frame', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: rawImageData }),
+                body: JSON.stringify({ image: rawImageData })
             })
             .then(r => r.json())
             .then(result => {
-                if (result.detected_letter) {
-                    currentLetter = result.detected_letter.letter;
-                    currentConf   = result.detected_letter.confidence;
-                } else {
-                    currentLetter = null;
-                    currentConf   = null;
-                }
-                // Store landmarks for the next render pass
+                currentLetter = result.detected_letter?.letter || null;
+                currentConf = result.detected_letter?.confidence || null;
                 pendingLandmarks = result.landmarks || null;
                 updateDisplay();
             })
-            .catch(err => console.error('Fetch error:', err))
-            .finally(() => { isProcessing = false; });
+            .finally(() => isProcessing = false);
         }
 
-        // ── 5. FPS counter ────────────────────────────────────────────────────
         frameCount++;
-        const now = Date.now();
-        if (now - lastFpsTime >= 1000) {
+        if (Date.now() - lastFpsTime >= 1000) {
             fpsDisplay.textContent = frameCount;
-            frameCount   = 0;
-            lastFpsTime  = now;
+            frameCount = 0;
+            lastFpsTime = Date.now();
         }
 
         animationId = requestAnimationFrame(renderLoop);
     }
 
-    // ── Landmark drawing (on mirrored display canvas) ────────────────────────
     function drawLandmarks(lm, W, H) {
         const pts = lm.points;
-
-        // Bounding box — flip x coords to match mirrored display
         const x1 = (1 - lm.x_max) * W;
         const x2 = (1 - lm.x_min) * W;
         const y1 = lm.y_min * H;
         const y2 = lm.y_max * H;
 
-        displayCtx.strokeStyle = '#000';
-        displayCtx.lineWidth   = 4;
+        displayCtx.strokeStyle = '#3b82f6';
+        displayCtx.lineWidth = 5;
         displayCtx.strokeRect(x1, y1, x2 - x1, y2 - y1);
 
-        // Predicted letter above the bounding box
-        displayCtx.fillStyle = '#000';
-        displayCtx.font      = 'bold 50px Arial';
-        displayCtx.fillText(lm.letter, x1 + 10, Math.max(y1 - 10, 50));
+        displayCtx.fillStyle = '#bae6fd';
+        displayCtx.font = '700 52px Inter';
+        displayCtx.fillText(lm.letter, x1 + 14, Math.max(y1 - 18, 58));
 
-        // Landmark points (green dots)
-        displayCtx.fillStyle = '#00FF00';
+        displayCtx.fillStyle = '#22c55e';
         for (const p of pts) {
-            const px = (1 - p.x) * W;   // flip x
+            const px = (1 - p.x) * W;
             const py = p.y * H;
             displayCtx.beginPath();
-            displayCtx.arc(px, py, 5, 0, 2 * Math.PI);
+            displayCtx.arc(px, py, 6, 0, 2 * Math.PI);
             displayCtx.fill();
         }
 
-        // Hand skeleton (green lines)
-        const connections = [
-            [0,1],[1,2],[2,3],[3,4],
-            [0,5],[5,6],[6,7],[7,8],
-            [0,9],[9,10],[10,11],[11,12],
-            [0,13],[13,14],[14,15],[15,16],
-            [0,17],[17,18],[18,19],[19,20],
-        ];
-        displayCtx.strokeStyle = '#00FF00';
-        displayCtx.lineWidth   = 2;
+        const connections = [[0,1],[1,2],[2,3],[3,4],[0,5],[5,6],[6,7],[7,8],[0,9],[9,10],[10,11],[11,12],[0,13],[13,14],[14,15],[15,16],[0,17],[17,18],[18,19],[19,20]];
+        displayCtx.strokeStyle = '#22c55e';
+        displayCtx.lineWidth = 3;
         for (const [s, e] of connections) {
             if (s < pts.length && e < pts.length) {
                 displayCtx.beginPath();
@@ -305,50 +516,63 @@
         }
     }
 
-    // ── UI helpers ────────────────────────────────────────────────────────────
     function updateDisplay() {
         currentLetterD.textContent = currentLetter || '-';
-        confidenceDisp.textContent = currentConf
-            ? (currentConf * 100).toFixed(0) + '%' : '-';
+        confidenceDisp.textContent = currentConf ? Math.round(currentConf * 100) + '%' : '-';
 
         if (currentLetter) {
-            letterDisplay.innerHTML =
-                `${currentLetter}<div class="confidence-text">${(currentConf * 100).toFixed(1)}%</div>`;
+            letterDisplay.innerHTML = `
+                ${currentLetter}
+                <div class="confidence-text">${Math.round(currentConf * 100)}% confidence</div>
+            `;
+            letterDisplay.classList.remove('waiting');
+            if (currentConf >= 0.85) letterDisplay.classList.add('high');
+            else letterDisplay.classList.remove('high');
         } else {
-            letterDisplay.textContent = 'Waiting...';
+            letterDisplay.textContent = 'Waiting for sign…';
+            letterDisplay.classList.add('waiting');
+            letterDisplay.classList.remove('high');
         }
+
         textOutput.textContent = detectedLetters.join('');
     }
 
-    function captureLetter() {
-        if (currentLetter) { detectedLetters.push(currentLetter); updateDisplay(); }
-    }
-    function deleteLetter() {
-        if (detectedLetters.length) { detectedLetters.pop(); updateDisplay(); }
-    }
-    function addSpace()  { detectedLetters.push(' '); updateDisplay(); }
-    function clearAll()  { detectedLetters = [];       updateDisplay(); }
+    // Event Listeners
+    startBtn.addEventListener('click', startDetection);
+    stopBtn.addEventListener('click', stopDetection);
+    captureBtn.addEventListener('click', () => { if (currentLetter) { detectedLetters.push(currentLetter); updateDisplay(); }});
+    deleteBtn.addEventListener('click', () => { if (detectedLetters.length) { detectedLetters.pop(); updateDisplay(); }});
+    spaceBtn.addEventListener('click', () => { detectedLetters.push(' '); updateDisplay(); });
+    clearBtn.addEventListener('click', () => { detectedLetters = []; updateDisplay(); });
 
-    // ── Event listeners ───────────────────────────────────────────────────────
-    startBtn.addEventListener('click',   startDetection);
-    stopBtn.addEventListener('click',    stopDetection);
-    captureBtn.addEventListener('click', captureLetter);
-    deleteBtn.addEventListener('click',  deleteLetter);
-    spaceBtn.addEventListener('click',   addSpace);
-    clearBtn.addEventListener('click',   clearAll);
+    copyBtn.addEventListener('click', () => {
+        if (textOutput.textContent) {
+            navigator.clipboard.writeText(textOutput.textContent);
+            const orig = copyBtn.textContent;
+            copyBtn.textContent = '✅ Copied!';
+            setTimeout(() => copyBtn.textContent = orig, 1800);
+        }
+    });
 
     document.addEventListener('keydown', e => {
         if (!isDetecting) return;
-        switch (e.key.toLowerCase()) {
-            case 's': captureLetter(); break;
-            case 'b': deleteLetter();  break;
-            case 'v': addSpace();      break;
-            case 'c': clearAll();      break;
+        switch(e.key.toLowerCase()) {
+            case 's': if (currentLetter) { detectedLetters.push(currentLetter); updateDisplay(); } break;
+            case 'b': if (detectedLetters.length) { detectedLetters.pop(); updateDisplay(); } break;
+            case 'v': detectedLetters.push(' '); updateDisplay(); break;
+            case 'c': detectedLetters = []; updateDisplay(); break;
             case 'q': stopDetection(); break;
         }
     });
 
     updateDisplay();
 </script>
+
+<style>
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+</style>
 </body>
 </html>
