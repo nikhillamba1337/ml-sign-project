@@ -1,0 +1,17 @@
+# Sign Language Detector — Python dependencies
+# Tested with Python 3.11 on Render
+
+flask==3.0.3
+gunicorn==22.0.0
+
+# Use headless OpenCV — no display/GUI needed on a server
+opencv-python-headless==4.9.0.80
+
+mediapipe==0.10.14
+
+numpy==1.26.4
+
+# NOTE: model.p was pickled with scikit-learn 1.3.x.
+# app_flask.py applies a compatibility patch so the model works with
+# any sklearn version >= 1.3; pin here to keep the environment stable.
+scikit-learn==1.3.2

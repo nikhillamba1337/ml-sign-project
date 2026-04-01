@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: sign-language-detector
+    env: python
+    region: oregon          # pick the region closest to you
+    plan: free              # change to starter/standard if you need more RAM
+    buildCommand: pip install -r requirements.txt
+    # Single worker avoids having multiple separate MediaPipe instances;
+    # timeout=120 allows mediapipe to initialise without being killed.
+    startCommand: gunicorn app_flask:app --workers 1 --timeout 120 --bind 0.0.0.0:$PORT
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
